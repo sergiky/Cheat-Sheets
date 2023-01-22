@@ -3,6 +3,8 @@ Variable a cambiar --> $WORD
 
 # Vulnerabilty in where cluase allowing retrieval of hidden data
 
+La típica de toda la vida
+
 ````sql
 $WORD' or 1=1-- -
 -- o se puede poner así también:
