@@ -162,7 +162,7 @@ Some switches that are used for evation firwall:
 - `--data-length` --> To create a random length of arbitrary packet
 # Codes examples
 
-Here Im going to put a code example of different type of enumeration and script
+Here Im going to put code example of different type of enumeration and script
 
 # Webgraphy
 - https://tryhackme.com/room/furthernmap
